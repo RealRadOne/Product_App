@@ -14,15 +14,17 @@ function App() {
   const [filterType, setFilterType] = useState('All');
   const [minPrice, setMinPrice] = useState('0');
   const [maxPrice, setMaxPrice] = useState('200');
+  const [searchResults, setSearchResults] = useState([]);
 
-  const fetchProducts = useCallback(() => {
-    if (!hasMore) return;
+  const isSearching = searchTerm || filterType !== 'All' || minPrice !== '0' || maxPrice !== '200';
+
+  const fetchProducts = useCallback((pageToFetch) => {
     setLoading(true);
-    fetch(`http://localhost:3001/api/get_products?page=${page}&limit=${limit}`)
+    fetch(`http://localhost:3001/api/get_products?page=${pageToFetch}&limit=${limit}`)
       .then(response => response.json())
       .then(data => {
         if (data.length < limit) {
-          setHasMore(false); // No more products to fetch
+          setHasMore(false);
         }
         setProducts(prevProducts => [...prevProducts, ...data]);
         setLoading(false);
@@ -31,48 +33,70 @@ function App() {
         console.error(err);
         setLoading(false);
       });
-  }, [page, limit, hasMore]);
+  }, [limit]);
+
+  const fetchSearchResults = useCallback(() => {
+    if (!isSearching) {
+      setSearchResults([]);
+      return;
+    }
+    setLoading(true);
+    fetch(`http://localhost:3001/api/search_products?value=${encodeURIComponent(searchTerm)}&type=${filterType}&minPrice=${minPrice}&maxPrice=${maxPrice}`)
+      .then(response => response.json())
+      .then(data => {
+        setSearchResults(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [searchTerm, filterType, minPrice, maxPrice, isSearching]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    if (!isSearching) {
+      fetchProducts(page);
+    }
+  }, [page, isSearching, fetchProducts]);
 
   useEffect(() => {
+    fetchSearchResults();
+  }, [fetchSearchResults]);
+
+  useEffect(() => {
+    if (!isSearching) {
+      setProducts([]);
+      setPage(1);
+      setHasMore(true);
+    }
+  }, [isSearching]);
+
+  useEffect(() => {
+    if (isSearching) return;
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
       if (scrollTop + clientHeight >= scrollHeight - 5 && !loading && hasMore) {
         setPage(prevPage => prevPage + 1);
       }
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [loading, hasMore]);
-
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.value.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || product.type === filterType;
-    const matchesMinPrice = minPrice === '' || parseFloat(product.price) >= parseFloat(minPrice);
-    const matchesMaxPrice = maxPrice === '' || parseFloat(product.price) <= parseFloat(maxPrice);
-
-    return matchesSearch && matchesType && matchesMinPrice && matchesMaxPrice;
-  });
+  }, [loading, hasMore, isSearching]);
 
   return (
     <div className={styles.mainContainer}>
-        <SearchBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          setFilterType={setFilterType}
-          minPrice={minPrice}
-          setMinPrice={setMinPrice}
-          maxPrice={maxPrice}
-          setMaxPrice={setMaxPrice}
-        />
-
+      <SearchBar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        setFilterType={setFilterType}
+        minPrice={minPrice}
+        setMinPrice={setMinPrice}
+        maxPrice={maxPrice}
+        setMaxPrice={setMaxPrice}
+      />
       <div style={{ flex: 1 }}>
-        <h1 style={{ textAlign: 'center' }}>Product List</h1>
-        <ProductList products={filteredProducts} />
+        <h1 className={styles.title}>Product List</h1>
+        <ProductList products={isSearching ? searchResults : products} />
         {loading && <p style={{ textAlign: 'center', marginTop: '20px' }}>Loading more products...</p>}
       </div>
     </div>
