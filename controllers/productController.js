@@ -1,39 +1,52 @@
-const Database = require('better-sqlite3');
-const database = new Database(':memory');
+const {Pool} = require('pg');
 
-database.exec(`DROP TABLE IF EXISTS PRODUCTS`);
+const pool = new Pool({
+    user: 'myuser',
+    host: 'localhost',
+    database: 'productsdb',
+    password: 'mypassword',
+    port: 5432,
+})
 
-database.exec(`
-    CREATE TABLE IF NOT EXISTS PRODUCTS(
-        ID INTEGER PRIMARY KEY,
-        value TEXT,
-        Type TEXT
-    )
-`);
-
-const testString = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const insertStmt = database.prepare('INSERT OR IGNORE INTO PRODUCTS (ID, value, Type) VALUES (?, ?, ?)');
-const types = ['Clothes', 'Food', 'Electronics', 'Supplies', 'Misc'];
-
-for (let i = 0; i < 26; i++) {
-    insertStmt.run(i, 'Product ' + testString.charAt(i), types[i % 4]);
+async function getProducts(req,res){
+    try{
+        const result = await pool.query('SELECT * FROM products ORDER BY id');
+        res.json(result.rows);
+    }catch(err){
+        console.error('Error fetching products:', err);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
 }
 
-function getProducts(req, res) {
-    const Stmt = database.prepare('SELECT * FROM PRODUCTS ORDER BY ID');
-    const data = Stmt.all();
-    console.log(data);
-    res.json(data);
+async function putProduct(req,res){
+    const { ID, Name, Type } = req.body;
+    try{
+        const result = await pool.query(
+            'INSERT INTO products (id,value,type) VALUES ($1,$2,$3)',[ID,Name,Type]
+        );
+        res.status(201).json(result.rows[0]);
+    }catch(err){
+        console.error('Error adding product:', err);
+        res.status(500).json({ error: 'Failed to add product' });
+    }
 }
 
-function putProduct(ID, Name, Type) {
-    const Stmt = database.prepare('INSERT INTO PRODUCTS (ID, value, Type) VALUES (?, ?, ?)');
-    Stmt.run(ID, Name, Type);
+async function getInfProducts(req,res){
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 10;
+    let offset = (page-1)*limit;
+
+    try{
+        const result = await pool.query(
+            'SELECT * FROM products ORDER BY id LIMIT $1 OFFSET $2',
+            [limit,offset]
+        );
+        res.json(result.rows);
+    }
+    catch(err){
+        console.error('Error fetching products',err);
+        res.status(500).json({error:'Failed to fetch products'});
+    }
 }
 
-function updateProduct(ID,Type){
-    const Stmt = database.prepare('UPDATE PRODUCTS SET Type = ? WHERE ID= ?');
-    Stmt.run(Type,ID);
-}
-
-module.exports = { getProducts, putProduct, updateProduct };
+module.exports = {getProducts,putProduct,getInfProducts,searchProducts}
