@@ -1,12 +1,8 @@
 const { Pool } = require('pg');
+const { db } = require('../config/config');
 
-const pool = new Pool({
-    user: 'myuser',
-    host: 'localhost',
-    database: 'productsdb',
-    password: 'mypassword',
-    port: 5432,
-});
+
+const pool = new Pool(db);
 
 const randomImageUrl = (seed) => `https://picsum.photos/seed/${seed}/300/200`;
 const randomPrice = () => (Math.random() * 100 + 10).toFixed(2);

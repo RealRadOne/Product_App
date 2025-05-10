@@ -1,13 +1,12 @@
 const {Pool} = require('pg');
+const { db } = require('../config/config');
 
-const pool = new Pool({
-    user: 'myuser',
-    host: 'localhost',
-    database: 'productsdb',
-    password: 'mypassword',
-    port: 5432,
-})
+//const pool, I don't plan to reassign it.
+const pool = new Pool(db);
 
+//async is to define a function that returns a promise.
+//await is used inside an async function to pause execution until a Promise settles.
+// A promise is a way for the function to say that it will eventually deliver.[pending,fulfilled and rejected]
 async function putProduct(req,res){
     const { ID, Name, Type } = req.body;
     try{
@@ -22,9 +21,10 @@ async function putProduct(req,res){
 }
 
 async function getInfProducts(req,res){
-    let page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 10;
-    let offset = (page-1)*limit;
+    //Immutable parameters per request
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page-1)*limit;
 
     try{
         const result = await pool.query(

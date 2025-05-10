@@ -3,6 +3,25 @@ import ProductList from './components/ProductList';
 import SearchBar from './components/SearchBar';
 import styles from './components/module.module.css';
 
+async function fetchProductData(page,limit){
+  const response = await fetch(`http://localhost:3001/api/get_products?page=${page}&limit=${limit}`);
+  if(!response.ok){
+    throw new Error('Failed to fetch products');
+  }
+  return response.json();
+}
+
+
+async function fetchSearchData({searchTerm,filterType,minPrice,maxPrice}){
+  const response = await fetch(
+    `http://localhost:3001/api/search_products?value=${encodeURIComponent(searchTerm)}&type=${filterType}&minPrice=${minPrice}&maxPrice=${maxPrice}`
+);
+if(!response.ok){
+  throw new Error('Failed to fetch search results');
+}
+return response.json();
+}
+
 function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,39 +37,37 @@ function App() {
 
   const isSearching = searchTerm || filterType !== 'All' || minPrice !== '0' || maxPrice !== '200';
 
-  const fetchProducts = useCallback((pageToFetch) => {
+
+  //pageToFetch changes everytime I scroll whereas limit is a state this passed differently.
+  const fetchProducts = useCallback(async (pageToFetch) => {
     setLoading(true);
-    fetch(`http://localhost:3001/api/get_products?page=${pageToFetch}&limit=${limit}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.length < limit) {
-          setHasMore(false);
-        }
-        setProducts(prevProducts => [...prevProducts, ...data]);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    try{
+    const data = await fetchProductData(pageToFetch,limit);
+    if(data.length<10){
+      setHasMore(false);
+    }
+    setProducts(prevProducts=>prevProducts.concat(data));
+  }catch(err){
+      console.error(err);
+    }finally{
+      setLoading(false);
+    }
   }, [limit]);
 
-  const fetchSearchResults = useCallback(() => {
+  const fetchSearchResults = useCallback(async () => {
     if (!isSearching) {
       setSearchResults([]);
       return;
     }
     setLoading(true);
-    fetch(`http://localhost:3001/api/search_products?value=${encodeURIComponent(searchTerm)}&type=${filterType}&minPrice=${minPrice}&maxPrice=${maxPrice}`)
-      .then(response => response.json())
-      .then(data => {
-        setSearchResults(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    try{
+      const data = await fetchSearchData({searchTerm,filterType,minPrice,maxPrice});
+      setSearchResults(data);
+    }catch(err){
+      console.error(err);
+    }finally{
+      setLoading(false);
+    }
   }, [searchTerm, filterType, minPrice, maxPrice, isSearching]);
 
   useEffect(() => {
