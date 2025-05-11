@@ -1,7 +1,5 @@
 require('dotenv').config();
 
-console.log('Loaded env PORT:', process.env.PORT);
-
 module.exports = {
     db: {
         user: process.env.DB_USER,
@@ -14,5 +12,3 @@ module.exports = {
         port: process.env.PORT || 3001,
     }
 };
-
-console.log('Loaded env PORT:', process.env.PORT);

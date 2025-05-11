@@ -7,7 +7,7 @@ function ProductList({products}){
         return <p>No products available.</p>;
     }
     return (
-        <div className={styles.container}>
+        <div className={styles.container} data-testid="product-list">
             {products.map((product,index)=>(
                 <ProductCard
                 key = {`${product.id}-${index}`}
