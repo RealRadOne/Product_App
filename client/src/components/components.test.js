@@ -13,6 +13,7 @@ describe('ProductCard Component',()=>{
             price = {99}
             />
         );
+        screen.debug();
         //Find first img rendered in the document and find nearest ancestor from yhe div
         const card = screen.getByRole('img').closest('div');
         const utils = within(card);
@@ -22,7 +23,7 @@ describe('ProductCard Component',()=>{
     });
 });
 
-describe('Product List component',()=>{
+describe('ProductList Component',()=>{
     const mockProduct = [{
         id: 1,
         value: 'Alpha',
@@ -38,4 +39,8 @@ describe('Product List component',()=>{
         expect(card.getByText(/Name: Alpha/i)).toBeInTheDocument();
         expect(card.getByText(/Type: Electronics/i)).toBeInTheDocument();
     })
+})
+
+describe('SearchBar Component',()=>{
+
 })

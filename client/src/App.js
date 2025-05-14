@@ -23,75 +23,69 @@ return response.json();
 }
 
 function App() {
-  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [hasMore, setHasMore] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [products, setProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(null);
   const [filterType, setFilterType] = useState('All');
   const [minPrice, setMinPrice] = useState('0');
   const [maxPrice, setMaxPrice] = useState('200');
   const [searchResults, setSearchResults] = useState([]);
 
-  const isSearching = searchTerm || filterType !== 'All' || minPrice !== '0' || maxPrice !== '200';
+  const isSearching = !!(
+    searchTerm || filterType !== 'All' || minPrice !== '0' || maxPrice !== '200'
+  );
 
-
-  //pageToFetch changes everytime I scroll whereas limit is a state this passed differently.
   const fetchProducts = useCallback(async (pageToFetch) => {
     setLoading(true);
     try{
     const data = await fetchProductData(pageToFetch,limit);
-    if(data.length<10){
+    if(data.length<limit){
       setHasMore(false);
+      console.log("No longer any products!");
     }
     setProducts(prevProducts=>prevProducts.concat(data));
-  }catch(err){
+  }   catch(err){
       console.error(err);
-    }finally{
+    } finally{
       setLoading(false);
     }
   }, [limit]);
 
+  //Any time the search filters change the function is re-created
   const fetchSearchResults = useCallback(async () => {
-    if (!isSearching) {
-      setSearchResults([]);
-      return;
-    }
     setLoading(true);
     try{
       const data = await fetchSearchData({searchTerm,filterType,minPrice,maxPrice});
       setSearchResults(data);
-    }catch(err){
+    } catch(err){
       console.error(err);
-    }finally{
+    } finally{
       setLoading(false);
     }
-  }, [searchTerm, filterType, minPrice, maxPrice, isSearching]);
+  }, [searchTerm, filterType, minPrice, maxPrice]);
 
   useEffect(() => {
-    if (!isSearching) {
+    if (!isSearching && page!=1) {
       fetchProducts(page);
     }
   }, [page, isSearching, fetchProducts]);
 
   useEffect(() => {
-    fetchSearchResults();
-  }, [fetchSearchResults]);
-
-  useEffect(() => {
-    if (!isSearching) {
-      setProducts([]);
-      setPage(1);
-      setHasMore(true);
+    if (isSearching) {
+      fetchSearchResults();
     }
-  }, [isSearching]);
+  }, [isSearching, fetchSearchResults]);
+
 
   useEffect(() => {
     if (isSearching) return;
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      //Detect a scroll and increment the page number
       if (scrollTop + clientHeight >= scrollHeight - 5 && !loading && hasMore) {
         setPage(prevPage => prevPage + 1);
       }
@@ -99,6 +93,16 @@ function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loading, hasMore, isSearching]);
+
+  useEffect(() => {
+    if (!isSearching) {
+      setSearchResults([]);
+      setProducts([]);
+      setPage(1);
+      setHasMore(true);
+      fetchProducts(1);
+    }
+  }, [isSearching,fetchProducts]);
 
   return (
     <div className={styles.mainContainer}>

@@ -5,13 +5,13 @@ const { db } = require('../config/config');
 const pool = new Pool(db);
 
 //async is to define a function that returns a promise.
-//await is used inside an async function to pause execution until a Promise settles.
+//await is used inside an async function to pause execution until a Promise returns back with "promised data".
 // A promise is a way for the function to say that it will eventually deliver.[pending,fulfilled and rejected]
 async function putProduct(req,res){
-    const { ID, Name, Type } = req.body;
+    const { id, value, type, image_url, price } = req.body;
     try{
         const result = await pool.query(
-            'INSERT INTO products (id,value,type) VALUES ($1,$2,$3)',[ID,Name,Type]
+            'INSERT INTO products (id,value,type,image_url,price) VALUES ($1,$2,$3,$4,$5)',[id,value,type,image_url,price]
         );
         res.status(201).json(result.rows[0]);
     }catch(err){
@@ -28,7 +28,10 @@ async function getInfProducts(req,res){
 
     try{
         const result = await pool.query(
-            'SELECT * FROM products ORDER BY id LIMIT $1 OFFSET $2',
+            // I get all data but omit data that has already been shown on the screen
+            // Bad query scans all data and omits, in future, maintain lastseen per ID and pick ones where ID>lastseen
+            // Postgres has a B-Tree it will scan better with the latter
+            'SELECT * FROM products ORDER BY price DESC LIMIT $1 OFFSET $2',
             [limit,offset]
         );
         res.json(result.rows);
@@ -41,7 +44,8 @@ async function getInfProducts(req,res){
 
 
 async function searchProducts(req,res){
-    const name = `%${req.query.value || ''}`;
+    //% appended to make %head% match suffix and prefix both
+    const name = `%${req.query.value || ''}%`;
     const type = req.query.type || 'All';
     const minPrice = parseInt(req.query.minPrice) || 0;
     const maxPrice = parseInt(req.query.maxPrice) || 9999;
@@ -59,7 +63,6 @@ async function searchProducts(req,res){
             queryText,[name,type,minPrice,maxPrice]
         );
         res.json(result.rows);
-        console.log(result);
     }catch(err){
         console.error('Error searching');
         res.status(500).json({error: 'Failed to search products'});

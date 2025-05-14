@@ -8,6 +8,7 @@ function SearchBar(props){
             type="text"
             placeholder="Name"
             value = {props.searchTerm}
+            //Get and set current text from input field on change
             onChange = {(e)=>props.setSearchTerm(e.target.value)}
         />
         <select 
